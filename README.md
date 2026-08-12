@@ -26,6 +26,7 @@ Full-featured AI Chatbot Vue application with authentication, chat history, coll
 - 📊 **Charts and weather** tool calling with rich UI rendering
 - 🔐 **Authentication** via GitHub OAuth using [Nitro](https://nitro.build) server routes and httpOnly cookies
 - 💾 **Chat history persistence** using SQLite database ([Turso](https://turso.tech) in production) and [Drizzle ORM](https://orm.drizzle.team)
+- 🌾 **Aglimate advice mode** with chat/advice toggle and direct endpoint integration to `https://nexusbert-aglimate.hf.space/advise`
 - ✨ **Markdown rendering** with streaming code highlighting via [Comark](https://comark.dev)
 
 ## Quick Start
@@ -63,6 +64,7 @@ For local development, set your API key in `.env`:
 
 ```bash
 AI_GATEWAY_API_KEY=<your-vercel-ai-gateway-api-key>
+VITE_AGLIMATE_API_BASE=https://nexusbert-aglimate.hf.space
 ```
 
 > [!TIP]

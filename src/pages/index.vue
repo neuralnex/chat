@@ -12,7 +12,12 @@ const { csrf, headerName } = useCsrf()
 const { user } = useUserSession()
 const input = ref('')
 const loading = ref(false)
+const adviceLoading = ref(false)
+const adviceResponse = ref<string | null>(null)
+const adviceError = ref<string | null>(null)
+const mode = ref<'chat' | 'advice'>('chat')
 const router = useRouter()
+const AGLIMATE_API_BASE = import.meta.env.VITE_AGLIMATE_API_BASE || 'https://nexusbert-aglimate.hf.space'
 
 const greeting = computed(() => {
   const hour = new Date().getHours()
@@ -38,8 +43,47 @@ async function createChat(prompt: string) {
   router.push(`/chat/${chat?.id}`)
 }
 
+async function requestAdvice(prompt: string) {
+  adviceError.value = null
+  adviceResponse.value = null
+  adviceLoading.value = true
+
+  try {
+    const formData = new FormData()
+    formData.append('query', prompt)
+    if (user.value?.id) {
+      formData.append('session_id', user.value.id)
+    }
+
+    const response = await fetch(`${AGLIMATE_API_BASE}/advise`, {
+      method: 'POST',
+      body: formData
+    })
+
+    if (!response.ok) {
+      const body = await response.text()
+      throw new Error(body || `${response.status} ${response.statusText}`)
+    }
+
+    const result = await response.json()
+    adviceResponse.value = result.answer || JSON.stringify(result)
+  } catch (error) {
+    adviceError.value = error instanceof Error ? error.message : String(error)
+  } finally {
+    adviceLoading.value = false
+  }
+}
+
 function onSubmit() {
-  createChat(input.value)
+  if (!input.value.trim()) {
+    return
+  }
+
+  if (mode.value === 'chat') {
+    createChat(input.value)
+  } else {
+    requestAdvice(input.value)
+  }
 }
 
 const quickChats = [
@@ -90,9 +134,29 @@ const quickChats = [
           {{ greeting }}
         </h1>
 
+        <div class="flex flex-wrap gap-2 items-center mb-4">
+          <UButton
+            size="sm"
+            variant="outline"
+            :color="mode === 'chat' ? 'primary' : 'neutral'"
+            label="Chat"
+            @click="mode = 'chat'"
+          />
+          <UButton
+            size="sm"
+            variant="outline"
+            :color="mode === 'advice' ? 'primary' : 'neutral'"
+            label="Advice"
+            @click="mode = 'advice'"
+          />
+          <span class="text-sm text-muted ml-2">
+            {{ mode === 'chat' ? 'Text chat mode' : 'Aglimate advice mode' }}
+          </span>
+        </div>
+
         <UChatPrompt
           v-model="input"
-          :status="loading ? 'streaming' : 'ready'"
+          :status="(mode === 'chat' ? (loading ? 'streaming' : 'ready') : (adviceLoading ? 'streaming' : 'ready'))"
           class="[view-transition-name:chat-prompt]"
           color="neutral"
           variant="subtle"
@@ -108,6 +172,22 @@ const quickChats = [
             />
           </template>
         </UChatPrompt>
+
+        <div v-if="mode === 'advice'" class="rounded-2xl border border-surface-300 bg-surface-100 p-4 text-sm text-slate-700 dark:bg-slate-900 dark:text-slate-100">
+          <p class="font-semibold">Advice mode</p>
+          <p class="mt-2">Send your question directly to the Aglimate advisory endpoint. This is best for crop, weather, and farm condition guidance.</p>
+          <p class="mt-2 text-xs text-muted">Uses: <code>{{ AGLIMATE_API_BASE }}/advise</code></p>
+        </div>
+
+        <div v-if="adviceResponse" class="rounded-2xl border border-emerald-300 bg-emerald-50 p-4 text-sm text-slate-900 dark:bg-emerald-950 dark:text-emerald-100">
+          <p class="font-semibold">Advice result</p>
+          <p class="mt-2 whitespace-pre-line">{{ adviceResponse }}</p>
+        </div>
+
+        <div v-if="adviceError" class="rounded-2xl border border-rose-300 bg-rose-50 p-4 text-sm text-rose-900 dark:bg-rose-950 dark:text-rose-100">
+          <p class="font-semibold">Advice request failed</p>
+          <p class="mt-2">{{ adviceError }}</p>
+        </div>
 
         <div class="flex flex-wrap gap-2">
           <UButton
